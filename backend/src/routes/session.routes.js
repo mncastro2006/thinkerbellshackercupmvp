@@ -8,6 +8,7 @@ const {
   advanceSession,
   backSession,
   listSessions,
+  deleteSession,
 } = require("../controllers/session.controller");
 const { requireAuth } = require("../middleware/auth");
 
@@ -21,6 +22,7 @@ router.get("/:id/live", requireAuth, getLiveSession);
 router.post("/:id/advance", requireAuth, advanceSession);
 router.post("/:id/back", requireAuth, backSession);
 router.get("/:id/state", getSessionState);
+router.delete("/:id", requireAuth, deleteSession);
 router.get("/:id", requireAuth, getSession);
 
 module.exports = router;

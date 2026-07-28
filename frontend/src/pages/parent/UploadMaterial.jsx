@@ -56,11 +56,6 @@ export default function UploadMaterial() {
           Upload a PDF lesson and our AI will turn it into 3 short stories with 5 questions each,
           matched to your child&apos;s learning level.
         </p>
-        <p className="helper-text">
-          Prototype modules: <strong>MATH3_Mod1.pdf</strong> (addition) or{" "}
-          <strong>MATH3_Mod2.pdf</strong> (division). Sample files live in{" "}
-          <code>backend/sample-modules/</code>.
-        </p>
       </div>
 
       <form className="card" onSubmit={handleSubmit}>

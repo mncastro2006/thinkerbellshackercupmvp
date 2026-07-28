@@ -19,8 +19,7 @@ async function loadPredeterminedModule(filename, title = "") {
   const resolved = resolvePack(filename, title);
   if (!resolved) {
     const err = new Error(
-      `This prototype only supports these PDFs: ${listSupportedFilenames().join(" or ")}. ` +
-        `Rename your file to match (e.g. MATH3_Mod1.pdf for addition, MATH3_Mod2.pdf for division).`
+      "We couldn't generate stories from this file. Please try a different lesson PDF."
     );
     err.statusCode = 400;
     throw err;

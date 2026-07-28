@@ -12,6 +12,7 @@ export default function ParentDashboard() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creatingFor, setCreatingFor] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [error, setError] = useState("");
 
   async function loadData() {
@@ -44,12 +45,45 @@ export default function ParentDashboard() {
     }
   }
 
+  async function handleDeleteModule(e, moduleId, title) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Delete “${title}” and all of its sessions? This cannot be undone.`)) return;
+    setDeleting(`module-${moduleId}`);
+    setError("");
+    try {
+      await api.delete(`/modules/${moduleId}`);
+      setModules((prev) => prev.filter((m) => m.id !== moduleId));
+      setSessions((prev) => prev.filter((s) => s.moduleId !== moduleId && s.module?.id !== moduleId));
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not delete module");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function handleDeleteSession(e, sessionId, label) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Delete session “${label}”? This cannot be undone.`)) return;
+    setDeleting(`session-${sessionId}`);
+    setError("");
+    try {
+      await api.delete(`/sessions/${sessionId}`);
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    } catch (err) {
+      setError(err.response?.data?.message || "Could not delete session");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
   return (
     <div className="page page--wide">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1>Welcome, {user?.name} 👋</h1>
-          <p className="helper-text">Upload a lesson, generate a connection code, and review your child's progress.</p>
+          <h1>Welcome, {user?.name}</h1>
+          <p className="helper-text">Upload a lesson, generate a connection code, and review your child&apos;s progress.</p>
         </div>
         <Link to="/parent/upload" className="btn">+ Upload new lesson</Link>
       </div>
@@ -65,18 +99,27 @@ export default function ParentDashboard() {
         <div className="module-grid">
           {modules.map((m, i) => (
             <div key={m.id} className={`module-card ${GRADIENTS[i % GRADIENTS.length]}`}>
-              <span className="module-card__badge">📘</span>
+              <button
+                type="button"
+                className="module-card__delete"
+                aria-label={`Delete ${m.title}`}
+                onClick={(e) => handleDeleteModule(e, m.id, m.title)}
+                disabled={deleting === `module-${m.id}`}
+              >
+                {deleting === `module-${m.id}` ? <span className="spinner" /> : "×"}
+              </button>
               <h4>{m.title}</h4>
               <span>{m.topic || (m.status === "processing" ? "Generating stories..." : m.status)}</span>
               {m.status === "ready" && (
-                <button
-                  className="btn btn--small"
-                  style={{ marginTop: 12 }}
-                  onClick={() => handleGenerateCode(m.id)}
-                  disabled={creatingFor === m.id}
-                >
-                  {creatingFor === m.id ? <span className="spinner" /> : "Generate code"}
-                </button>
+                <div className="module-card__actions">
+                  <button
+                    className="btn btn--small"
+                    onClick={() => handleGenerateCode(m.id)}
+                    disabled={creatingFor === m.id || deleting === `module-${m.id}`}
+                  >
+                    {creatingFor === m.id ? <span className="spinner" /> : "Generate code"}
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -88,15 +131,32 @@ export default function ParentDashboard() {
         {!loading && sessions.length === 0 && <p className="helper-text">No sessions yet.</p>}
         <div className="module-grid">
           {sessions.map((s, i) => (
-            <Link
-              key={s.id}
-              to={s.status === "completed" ? `/parent/session/${s.id}/report` : `/parent/session/${s.id}/code`}
-              className={`module-card ${GRADIENTS[(i + 1) % GRADIENTS.length]}`}
-            >
-              <span className="module-card__badge">{s.status === "completed" ? "✅" : "⏳"}</span>
-              <h4>{s.module?.title}</h4>
-              <span>Code {s.code} · {s.status}</span>
-            </Link>
+            <div key={s.id} className={`module-card ${GRADIENTS[(i + 1) % GRADIENTS.length]}`}>
+              <button
+                type="button"
+                className="module-card__delete"
+                aria-label={`Delete session ${s.code}`}
+                onClick={(e) => handleDeleteSession(e, s.id, s.module?.title || s.code)}
+                disabled={deleting === `session-${s.id}`}
+              >
+                {deleting === `session-${s.id}` ? <span className="spinner" /> : "×"}
+              </button>
+              <Link
+                to={s.status === "completed" ? `/parent/session/${s.id}/report` : `/parent/session/${s.id}/code`}
+                className="module-card__link"
+              >
+                <h4>{s.module?.title || "Session"}</h4>
+                <span>Code {s.code} · {s.status}</span>
+              </Link>
+              <div className="module-card__actions">
+                <Link
+                  to={s.status === "completed" ? `/parent/session/${s.id}/report` : `/parent/session/${s.id}/code`}
+                  className="btn btn--small"
+                >
+                  Open
+                </Link>
+              </div>
+            </div>
           ))}
         </div>
       </section>

@@ -15,7 +15,6 @@ export default function Navbar() {
         {user ? (
           <>
             <Link to="/parent">Dashboard</Link>
-            <Link to="/parent/profile">Profile</Link>
             <button
               className="btn btn--ghost"
               onClick={() => {

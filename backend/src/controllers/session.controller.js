@@ -308,6 +308,16 @@ const listSessions = asyncHandler(async (req, res) => {
   res.json({ sessions });
 });
 
+// DELETE /api/sessions/:id  (parent)
+const deleteSession = asyncHandler(async (req, res) => {
+  const session = await Session.findOne({
+    where: { id: req.params.id, parentId: req.user.id },
+  });
+  if (!session) return res.status(404).json({ message: "Session not found" });
+  await session.destroy();
+  res.json({ message: "Session deleted" });
+});
+
 module.exports = {
   createSession,
   joinSession,
@@ -317,4 +327,5 @@ module.exports = {
   advanceSession,
   backSession,
   listSessions,
+  deleteSession,
 };

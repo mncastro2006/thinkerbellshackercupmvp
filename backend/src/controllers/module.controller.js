@@ -1,5 +1,5 @@
-const { Module, Story, Question, sequelize } = require("../models");
-const { loadPredeterminedModule, listSupportedFilenames } = require("../services/content.service");
+const { Module, Story, Question, Session, sequelize } = require("../models");
+const { loadPredeterminedModule } = require("../services/content.service");
 const asyncHandler = require("../utils/asyncHandler");
 
 // POST /api/modules/upload  (multipart/form-data, field name: "file")
@@ -11,10 +11,7 @@ const uploadModule = asyncHandler(async (req, res) => {
     pack = await loadPredeterminedModule(req.file.originalname, req.body.title || "");
   } catch (err) {
     if (err.statusCode === 400) {
-      return res.status(400).json({
-        message: err.message,
-        supported: listSupportedFilenames(),
-      });
+      return res.status(400).json({ message: err.message });
     }
     throw err;
   }
@@ -25,7 +22,7 @@ const uploadModule = asyncHandler(async (req, res) => {
     parentId: req.user.id,
     packKey: pack.packKey,
     topic: pack.topic,
-    extractedText: `[prototype] Loaded predetermined pack ${pack.packKey}`,
+    extractedText: `Loaded pack ${pack.packKey}`,
     status: "processing",
   });
 
@@ -102,4 +99,16 @@ const listModules = asyncHandler(async (req, res) => {
   res.json({ modules });
 });
 
-module.exports = { uploadModule, getModule, listModules };
+// DELETE /api/modules/:id  (parent) — cascades stories/questions; clears related sessions
+const deleteModule = asyncHandler(async (req, res) => {
+  const module_ = await Module.findOne({
+    where: { id: req.params.id, parentId: req.user.id },
+  });
+  if (!module_) return res.status(404).json({ message: "Module not found" });
+
+  await Session.destroy({ where: { moduleId: module_.id, parentId: req.user.id } });
+  await module_.destroy();
+  res.json({ message: "Module deleted" });
+});
+
+module.exports = { uploadModule, getModule, listModules, deleteModule };

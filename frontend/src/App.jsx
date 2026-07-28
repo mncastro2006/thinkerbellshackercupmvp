@@ -10,7 +10,6 @@ import ParentDashboard from "./pages/parent/ParentDashboard";
 import UploadMaterial from "./pages/parent/UploadMaterial";
 import GeneratedCode from "./pages/parent/GeneratedCode";
 import ModuleReport from "./pages/parent/ModuleReport";
-import Profile from "./pages/parent/Profile";
 
 import EnterCode from "./pages/student/EnterCode";
 import StoryQuiz from "./pages/student/StoryQuiz";
@@ -32,7 +31,6 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/role" element={<RoleSelect />} />
 
-        {/* Parent flow */}
         <Route
           path="/parent"
           element={
@@ -65,16 +63,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/parent/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
-            </ProtectedRoute>
-          }
-        />
 
-        {/* Student flow - no login required, connects via join code */}
         <Route path="/student" element={<EnterCode />} />
         <Route path="/student/play" element={<StoryQuiz />} />
         <Route path="/student/evaluation" element={<Evaluation />} />
