@@ -1,7 +1,8 @@
 const router = require("express").Router();
-const { submitAttempt, getProgress } = require("../controllers/quiz.controller");
+const { submitAttempt, submitAnswer, getProgress } = require("../controllers/quiz.controller");
 
-// Public - student device submits answers using the session it joined
+// Public - student device
+router.post("/answer", submitAnswer);
 router.post("/submit", submitAttempt);
 router.get("/session/:sessionId/progress", getProgress);
 

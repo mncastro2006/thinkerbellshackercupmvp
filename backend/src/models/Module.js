@@ -2,7 +2,7 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
 // A Module represents one uploaded PDF (a curriculum unit) and the 3
-// AI-generated stories derived from it.
+// predetermined prototype stories loaded from modules.config.js.
 const Module = sequelize.define(
   "Module",
   {
@@ -11,6 +11,7 @@ const Module = sequelize.define(
     sourceFileName: { type: DataTypes.STRING },
     extractedText: { type: DataTypes.TEXT("long") },
     topic: { type: DataTypes.STRING }, // e.g. "Addition of 2-digit numbers"
+    packKey: { type: DataTypes.STRING }, // MATH3_Mod1 | MATH3_Mod2
     status: {
       type: DataTypes.ENUM("processing", "ready", "failed"),
       defaultValue: "processing",

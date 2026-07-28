@@ -193,6 +193,16 @@ body.dyslexia-font, body.dyslexia-font * {
   opacity: 0.35;
   pointer-events: none;
 }
+.story-scene__backdrop-img {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  opacity: 0.45;
+  pointer-events: none;
+}
 
 .story-scene__cast {
   display: flex;
@@ -203,9 +213,48 @@ body.dyslexia-font, body.dyslexia-font * {
   z-index: 1;
 }
 .story-scene--large .story-scene__character,
-.story-scene--large .story-scene__object { font-size: 2.6rem; }
+.story-scene--large .story-scene__object {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
 .story-scene--small .story-scene__character,
-.story-scene--small .story-scene__object { font-size: 1.8rem; }
+.story-scene--small .story-scene__object {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.story-visual { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.story-visual__img { width: 48px; height: 48px; object-fit: contain; }
+
+/* Parent live one-pager */
+.story-full-text {
+  background: #F7F5FF;
+  border-radius: 14px;
+  padding: 16px 18px;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  margin: 14px 0;
+}
+.parent-current-question {
+  margin-top: 16px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #FFF8E6;
+}
+.parent-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+.parent-nav { display: flex; gap: 10px; }
+.feedback-ok { color: #2E9E5B; font-weight: 700; }
+.feedback-bad { color: #D64545; font-weight: 700; }
+.student-follower .question-text { text-align: center; }
 
 /* Answer spots placed at the 4 corners of the scene frame */
 .story-scene__answers { position: absolute; inset: 0; }

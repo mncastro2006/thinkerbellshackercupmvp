@@ -3,6 +3,7 @@ const sequelize = require("../config/db");
 
 // A Kahoot-style connection session: parent generates a join code,
 // student enters the code on their screen to connect to the module.
+// Parent owns pacing via cursorStoryIndex / cursorQuestionIndex / cursorStage.
 const Session = sequelize.define(
   "Session",
   {
@@ -14,6 +15,17 @@ const Session = sequelize.define(
       defaultValue: "waiting",
     },
     expiresAt: { type: DataTypes.DATE, allowNull: false },
+    cursorStoryIndex: { type: DataTypes.INTEGER, defaultValue: 0 },
+    cursorQuestionIndex: { type: DataTypes.INTEGER, defaultValue: 0 },
+    // story = show visuals only; question = answer choices; done = finished
+    cursorStage: {
+      type: DataTypes.ENUM("story", "question", "done"),
+      defaultValue: "story",
+    },
+    // Accumulated answers for the current story before Attempt is finalized
+    pendingAnswers: { type: DataTypes.JSON, defaultValue: [] },
+    // Last student tap — shown on parent live view
+    lastAnswerFeedback: { type: DataTypes.JSON, defaultValue: null },
   },
   { tableName: "sessions", timestamps: true }
 );

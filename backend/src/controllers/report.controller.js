@@ -31,7 +31,11 @@ const getSessionReport = asyncHandler(async (req, res) => {
     }))
   );
 
-  const built = buildReport(answerRecords, session.studentName || "The learner");
+  const built = buildReport(
+    answerRecords,
+    session.studentName || "The learner",
+    session.module?.packKey || null
+  );
 
   const report = await Report.create({
     sessionId: session.id,
@@ -73,7 +77,11 @@ const getPublicSummary = asyncHandler(async (req, res) => {
       }))
     );
 
-    const built = buildReport(answerRecords, session.studentName || "You");
+    const built = buildReport(
+      answerRecords,
+      session.studentName || "You",
+      session.module?.packKey || null
+    );
 
     report = await Report.create({
       sessionId: session.id,

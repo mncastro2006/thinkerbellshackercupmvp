@@ -2,27 +2,25 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
 import StoryScene from "../../components/StoryScene";
-import StoryBeats from "../../components/StoryBeats";
 import AnswerBlock from "../../components/AnswerBlock";
 import ProgressBar from "../../components/ProgressBar";
-import AccessibilityToggles from "../../components/AccessibilityToggles";
 
-// INTRO = pre-assessment "storybuilding" beats shown before any questions
-// (PRD roadmap item), QUESTION/FEEDBACK = the scene with answers integrated
-// into it, SUBMITTING = saving the story's answers to the backend.
-const STAGE = { INTRO: "intro", QUESTION: "question", FEEDBACK: "feedback", SUBMITTING: "submitting" };
-
+/**
+ * Student follower screen: polls parent cursor. Only answer choices are
+ * clickable — no Next/Back, no TTS, no story text navigation.
+ */
 export default function StoryQuiz() {
   const navigate = useNavigate();
   const [session, setSession] = useState(null);
   const [module_, setModule] = useState(null);
-  const [storyIndex, setStoryIndex] = useState(0);
-  const [questionIndex, setQuestionIndex] = useState(0);
-  const [stage, setStage] = useState(STAGE.INTRO);
-  const [collectedAnswers, setCollectedAnswers] = useState([]);
+  const [cursor, setCursor] = useState({
+    cursorStoryIndex: 0,
+    cursorQuestionIndex: 0,
+    cursorStage: "story",
+    status: "active",
+  });
   const [selected, setSelected] = useState(null);
-  const [dyslexiaFont, setDyslexiaFont] = useState(false);
-  const [speaking, setSpeaking] = useState(false);
+  const [answerResult, setAnswerResult] = useState(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -32,83 +30,84 @@ export default function StoryQuiz() {
       navigate("/student");
       return;
     }
-    setSession(JSON.parse(s));
+    const parsed = JSON.parse(s);
+    setSession(parsed);
     setModule(JSON.parse(m));
+    setCursor({
+      cursorStoryIndex: parsed.cursorStoryIndex || 0,
+      cursorQuestionIndex: parsed.cursorQuestionIndex || 0,
+      cursorStage: parsed.cursorStage || "story",
+      status: "active",
+    });
   }, [navigate]);
 
   useEffect(() => {
-    document.body.classList.toggle("dyslexia-font", dyslexiaFont);
-    return () => document.body.classList.remove("dyslexia-font");
-  }, [dyslexiaFont]);
+    if (!session?.id) return;
+
+    async function pollState() {
+      try {
+        const res = await api.get(`/sessions/${session.id}/state`);
+        setCursor(res.data);
+        if (res.data.status === "completed" || res.data.cursorStage === "done") {
+          navigate("/student/evaluation");
+        }
+        // Clear local selection when parent moves to a new question/story
+        setSelected((prev) => {
+          if (res.data.lastAnswerFeedback?.questionId) return prev;
+          return null;
+        });
+        if (!res.data.lastAnswerFeedback) {
+          setAnswerResult(null);
+          setSelected(null);
+        } else {
+          setAnswerResult(res.data.lastAnswerFeedback);
+          setSelected(res.data.lastAnswerFeedback.givenAnswer);
+        }
+      } catch {
+        // ignore transient poll errors
+      }
+    }
+
+    pollState();
+    const interval = setInterval(pollState, 1200);
+    return () => clearInterval(interval);
+  }, [session?.id, navigate]);
 
   const stories = module_?.stories || [];
+  const storyIndex = cursor.cursorStoryIndex || 0;
+  const questionIndex = cursor.cursorQuestionIndex || 0;
+  const stage = cursor.cursorStage || "story";
   const story = stories[storyIndex];
   const question = story?.questions?.[questionIndex];
 
   const overallProgress = useMemo(() => {
     if (!stories.length) return { value: 0, max: 1 };
-    const perStory = story?.questions?.length || 5;
-    const doneStories = storyIndex * perStory;
-    const value = doneStories + (stage === STAGE.INTRO ? 0 : questionIndex);
     const max = stories.reduce((sum, s) => sum + (s.questions?.length || 0), 0);
+    let value = 0;
+    for (let i = 0; i < storyIndex; i++) value += stories[i].questions?.length || 0;
+    if (stage === "question") value += questionIndex;
     return { value, max };
-  }, [stories, storyIndex, questionIndex, stage, story]);
+  }, [stories, storyIndex, questionIndex, stage]);
 
-  function speak(text) {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.9;
-    utter.onstart = () => setSpeaking(true);
-    utter.onend = () => setSpeaking(false);
-    window.speechSynthesis.speak(utter);
-  }
-
-  function handleStartStory() {
-    setCollectedAnswers([]);
-    setQuestionIndex(0);
-    setSelected(null);
-    setStage(STAGE.QUESTION);
-  }
-
-  function handleAnswer(choice) {
-    if (selected) return;
+  async function handleAnswer(choice) {
+    if (selected || stage !== "question" || !question) return;
     setSelected(choice);
-    setStage(STAGE.FEEDBACK);
-    const updated = [...collectedAnswers, { questionId: question.id, givenAnswer: choice }];
-    setCollectedAnswers(updated);
-
-    setTimeout(() => {
-      const isLastQuestion = questionIndex + 1 >= story.questions.length;
-      if (isLastQuestion) {
-        submitStory(updated);
-      } else {
-        setQuestionIndex((q) => q + 1);
-        setSelected(null);
-        setStage(STAGE.QUESTION);
-      }
-    }, 1100);
-  }
-
-  async function submitStory(answers) {
-    setStage(STAGE.SUBMITTING);
+    setError("");
     try {
-      const res = await api.post("/quiz/submit", {
+      const res = await api.post("/quiz/answer", {
         sessionId: session.id,
         storyId: story.id,
-        answers,
+        questionId: question.id,
+        givenAnswer: choice,
       });
-
-      const isLastStory = storyIndex + 1 >= stories.length;
-      if (isLastStory || res.data.isModuleComplete) {
-        navigate("/student/evaluation");
-      } else {
-        setStoryIndex((i) => i + 1);
-        setStage(STAGE.INTRO);
-      }
+      setAnswerResult({
+        questionId: question.id,
+        givenAnswer: choice,
+        isCorrect: res.data.isCorrect,
+      });
     } catch (err) {
-      setError(err.response?.data?.message || "Could not save your answers. Please try again.");
-      setStage(STAGE.QUESTION);
+      setSelected(null);
+      setError(err.response?.data?.message || "Could not save your answer.");
     }
   }
 
@@ -116,76 +115,63 @@ export default function StoryQuiz() {
     return <div className="page center-col">Loading your story...</div>;
   }
 
+  const objects =
+    stage === "question" && question?.visualAssets?.length
+      ? question.visualAssets
+      : story.visualAssets || [];
+
   return (
     <div className="page page--narrow">
-      <ProgressBar value={overallProgress.value} max={overallProgress.max} label={`Story ${storyIndex + 1} of ${stories.length}`} />
+      <ProgressBar
+        value={overallProgress.value}
+        max={overallProgress.max}
+        label={`Story ${storyIndex + 1} of ${stories.length}`}
+      />
 
       {error && <p className="error-text">{error}</p>}
 
-      <div className="quiz-screen">
-        {stage === STAGE.INTRO && (
-          <div className="center-col">
-            <h2>{story.title}</h2>
-            <StoryScene
-              background={story.scene?.background}
-              characters={story.scene?.characters}
-              objects={story.visualAssets}
-            />
-            <StoryBeats beats={story.beats?.length ? story.beats : [story.content]} onDone={handleStartStory} onSpeak={speak} />
-            <AccessibilityToggles
-              dyslexiaFont={dyslexiaFont}
-              onToggleFont={() => setDyslexiaFont((v) => !v)}
-              onSpeak={() => speak((story.beats?.length ? story.beats.join(" ") : story.content))}
-              speaking={speaking}
-            />
-          </div>
+      <div className="quiz-screen student-follower">
+        <StoryScene
+          background={story.scene?.background}
+          characters={story.scene?.characters}
+          objects={objects}
+          size={stage === "question" ? "small" : "large"}
+        />
+
+        {stage === "story" && (
+          <p className="helper-text" style={{ textAlign: "center" }}>
+            Look at the pictures. Your parent will start the questions when you are ready.
+          </p>
         )}
 
-        {(stage === STAGE.QUESTION || stage === STAGE.FEEDBACK) && question && (
-          <div>
+        {stage === "question" && question && (
+          <>
             <p className="question-text">{question.text}</p>
-
-            <StoryScene
-              background={story.scene?.background}
-              characters={story.scene?.characters}
-              objects={question.visualAssets}
-              size="small"
-              answerScene={question.answerScene}
-              onAnswer={handleAnswer}
-              selectedLabel={selected}
-              disabled={stage === STAGE.FEEDBACK}
-            />
-
-            {/* Fallback for stories generated before answerScene existed */}
-            {(!question.answerScene || question.answerScene.length === 0) && (
-              <div className="answer-grid">
-                {question.choices.map((choice, i) => (
+            <div className="answer-grid">
+              {question.choices.map((choice, i) => {
+                let correctness;
+                if (answerResult && selected === choice) {
+                  correctness = answerResult.isCorrect ? "correct" : "incorrect";
+                }
+                return (
                   <AnswerBlock
                     key={choice}
                     label={choice}
                     index={i}
                     selected={selected === choice}
-                    disabled={stage === STAGE.FEEDBACK}
+                    disabled={!!selected}
+                    correctness={correctness}
                     onClick={() => handleAnswer(choice)}
                   />
-                ))}
-              </div>
+                );
+              })}
+            </div>
+            {selected && (
+              <p className="helper-text" style={{ textAlign: "center", marginTop: 12 }}>
+                Nice! Wait for your parent to continue.
+              </p>
             )}
-
-            <AccessibilityToggles
-              dyslexiaFont={dyslexiaFont}
-              onToggleFont={() => setDyslexiaFont((v) => !v)}
-              onSpeak={() => speak(question.text)}
-              speaking={speaking}
-            />
-          </div>
-        )}
-
-        {stage === STAGE.SUBMITTING && (
-          <div className="center-col">
-            <span className="spinner" />
-            <p className="helper-text">Saving your answers...</p>
-          </div>
+          </>
         )}
       </div>
     </div>

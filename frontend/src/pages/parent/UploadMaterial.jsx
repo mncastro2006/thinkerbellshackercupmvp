@@ -13,7 +13,7 @@ export default function UploadMaterial() {
 
   function handleFile(f) {
     if (!f) return;
-    if (f.type !== "application/pdf") {
+    if (f.type !== "application/pdf" && !f.name?.toLowerCase().endsWith(".pdf")) {
       setError("Please upload a PDF file.");
       return;
     }
@@ -36,6 +36,7 @@ export default function UploadMaterial() {
       formData.append("title", title);
       const res = await api.post("/modules/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
+        timeout: 60000,
       });
       const moduleId = res.data.module.id;
       const sessionRes = await api.post("/sessions", { moduleId });
@@ -52,21 +53,35 @@ export default function UploadMaterial() {
       <div className="center-col" style={{ marginBottom: 10 }}>
         <h1>Upload material</h1>
         <p className="helper-text">
-          Upload a PDF lesson and we'll turn it into 3 short stories with 5 questions each,
-          matched to your child's learning level.
+          Upload a PDF lesson and our AI will turn it into 3 short stories with 5 questions each,
+          matched to your child&apos;s learning level.
+        </p>
+        <p className="helper-text">
+          Prototype modules: <strong>MATH3_Mod1.pdf</strong> (addition) or{" "}
+          <strong>MATH3_Mod2.pdf</strong> (division). Sample files live in{" "}
+          <code>backend/sample-modules/</code>.
         </p>
       </div>
 
       <form className="card" onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="title">Lesson title</label>
-          <input id="title" type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Addition of 2-digit numbers" />
+          <input
+            id="title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="e.g. Addition of 2-digit numbers"
+          />
         </div>
 
         <div
           className={`dropzone ${dragActive ? "dropzone--active" : ""}`}
           onClick={() => fileInputRef.current?.click()}
-          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragActive(true);
+          }}
           onDragLeave={() => setDragActive(false)}
           onDrop={(e) => {
             e.preventDefault();
@@ -85,10 +100,20 @@ export default function UploadMaterial() {
           />
         </div>
 
-        {error && <p className="error-text" style={{ marginTop: 12 }}>{error}</p>}
+        {error && (
+          <p className="error-text" style={{ marginTop: 12 }}>
+            {error}
+          </p>
+        )}
 
         <button className="btn btn--block" style={{ marginTop: 20 }} type="submit" disabled={busy}>
-          {busy ? <span className="spinner" /> : "Generate stories & get code"}
+          {busy ? (
+            <>
+              <span className="spinner" /> Generating stories with AI…
+            </>
+          ) : (
+            "Generate stories & get code"
+          )}
         </button>
       </form>
     </div>

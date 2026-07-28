@@ -1,18 +1,16 @@
-import { emojiFor } from "../assets/emojiMap";
+import { assetFor } from "../assets/assetMap";
 
-/**
- * Renders the static emoji visualization for a story/question,
- * e.g. visualAssets = ["apple","orange"] -> 🍎 🍊
- */
+/** Simple strip of PNG story objects (legacy helper). */
 export default function StoryVisual({ assets = [], size = "large" }) {
   if (!assets.length) return null;
   return (
-    <div className={`story-visual story-visual--${size}`}>
-      {assets.map((key, i) => (
-        <span key={`${key}-${i}`} className="story-visual__item" title={key}>
-          {emojiFor(key)}
-        </span>
-      ))}
+    <div className={`story-visual story-visual--${size}`} aria-hidden="true">
+      {assets.map((key, i) => {
+        const src = assetFor(key);
+        return src ? (
+          <img key={`${key}-${i}`} className="story-visual__img" src={src} alt="" />
+        ) : null;
+      })}
     </div>
   );
 }

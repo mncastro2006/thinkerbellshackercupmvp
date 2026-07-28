@@ -1,29 +1,38 @@
 const { Module, Story, Question, sequelize } = require("../models");
-const { extractTextFromPdf } = require("../services/pdf.service");
-const { generateStories } = require("../services/ai.service");
+const { loadPredeterminedModule, listSupportedFilenames } = require("../services/content.service");
 const asyncHandler = require("../utils/asyncHandler");
 
 // POST /api/modules/upload  (multipart/form-data, field name: "file")
 const uploadModule = asyncHandler(async (req, res) => {
   if (!req.file) return res.status(400).json({ message: "PDF file is required (field 'file')" });
 
+  let pack;
+  try {
+    pack = await loadPredeterminedModule(req.file.originalname, req.body.title || "");
+  } catch (err) {
+    if (err.statusCode === 400) {
+      return res.status(400).json({
+        message: err.message,
+        supported: listSupportedFilenames(),
+      });
+    }
+    throw err;
+  }
+
   const module_ = await Module.create({
-    title: req.body.title || req.file.originalname.replace(/\.pdf$/i, ""),
+    title: req.body.title || pack.title || req.file.originalname.replace(/\.pdf$/i, ""),
     sourceFileName: req.file.originalname,
     parentId: req.user.id,
+    packKey: pack.packKey,
+    topic: pack.topic,
+    extractedText: `[prototype] Loaded predetermined pack ${pack.packKey}`,
     status: "processing",
   });
 
   try {
-    const text = await extractTextFromPdf(req.file.path);
-    module_.extractedText = text;
-
-    const { topic, stories } = await generateStories(text);
-    module_.topic = topic;
-
     const t = await sequelize.transaction();
     try {
-      for (const s of stories) {
+      for (const s of pack.stories) {
         const story = await Story.create(
           {
             moduleId: module_.id,
@@ -77,9 +86,6 @@ const uploadModule = asyncHandler(async (req, res) => {
 });
 
 const getModule = asyncHandler(async (req, res) => {
-  // Scoped to the requesting parent - this endpoint returns full story/question
-  // content including the parent-only teaching guide, so it must never leak
-  // another parent's module.
   const module_ = await Module.findOne({
     where: { id: req.params.id, parentId: req.user.id },
     include: [{ model: Story, as: "stories", include: [{ model: Question, as: "questions" }] }],
