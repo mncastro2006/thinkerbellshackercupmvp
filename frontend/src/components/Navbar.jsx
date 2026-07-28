@@ -24,17 +24,11 @@ export default function Navbar() {
         .nav-brand {
           display: flex;
           align-items: center;
-          gap: 12px;
           text-decoration: none;
         }
         
-        .brand-icon {
-          height: 40px;
-          width: auto;
-        }
-        
         .brand-text-img {
-          height: 32px; /* Sized to align nicely with the V icon */
+          height: 52px; 
           width: auto;
           object-fit: contain;
         }
@@ -48,36 +42,46 @@ export default function Navbar() {
         .nav-text-link {
           font-family: 'Nunito', sans-serif;
           font-weight: 800;
-          color: #1A3015;
+          /* Dark purple from OUI palette */
+          color: #4c37a9;
           text-decoration: none;
           font-size: 16px;
+          transition: color 0.2s;
         }
         .nav-text-link:hover {
-          color: #5C4B99;
+          /* Medium purple from OUI palette for hover */
+          color: #967cc7;
         }
 
         .nav-btn {
-          background-color: #8C7DE6;
+          /* Tangerine from the palette */
+          background-color: #FF8F45;
           color: white;
           padding: 10px 24px;
           border-radius: 20px;
           text-decoration: none;
           font-weight: 800;
           font-family: 'Nunito', sans-serif;
-          transition: background 0.2s;
+          transition: background 0.2s, transform 0.1s;
           border: none;
           cursor: pointer;
           font-size: 16px;
           display: inline-block;
+          box-shadow: 0px 4px 0px #cf6e2f; /* Darker tangerine for 3D effect */
         }
         .nav-btn:hover {
-          background-color: #7262C9;
+          /* Orange from OUI palette for hover */
+          background-color: #ffad33;
+          box-shadow: 0px 4px 0px #cc8514;
+        }
+        .nav-btn:active {
+          transform: translateY(4px);
+          box-shadow: 0px 0px 0px transparent;
         }
       `}</style>
 
-      {/* Top Left: Logo & Wordmark Image */}
+      {/* Top Left: Just the Vizma Wordmark Logo */}
       <Link to="/" className="nav-brand">
-        <img src="/v-icon.png" alt="Vizma logo" className="brand-icon" />
         <img src="/vizma-logo.png" alt="Vizma wordmark" className="brand-text-img" />
       </Link>
 
