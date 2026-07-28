@@ -11,6 +11,10 @@ const Question = sequelize.define(
     correctAnswer: { type: DataTypes.STRING, allowNull: false },
     skillTag: { type: DataTypes.STRING }, // e.g. "addition-2digit"
     visualAssets: { type: DataTypes.JSON, defaultValue: [] },
+    // Per-choice scene placement so answer options render as objects/spots INSIDE
+    // the story scene instead of separate quiz buttons below it, e.g.
+    // [{ label: "5", object: "apple", position: "left" }, ...]
+    answerScene: { type: DataTypes.JSON, defaultValue: [] },
   },
   { tableName: "questions", timestamps: true }
 );

@@ -163,6 +163,112 @@ body.dyslexia-font, body.dyslexia-font * {
 .answer-block--incorrect { outline: 4px solid #D64545; opacity: 0.7; }
 .answer-block__shape { font-size: 1rem; }
 
+/* Composable story scene: background + people + objects, with answer spots
+   integrated into the frame instead of separate quiz buttons below it. */
+.story-scene {
+  position: relative;
+  border-radius: var(--radius);
+  min-height: 260px;
+  padding: 20px;
+  margin: 18px 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.story-scene--large { min-height: 300px; }
+.story-scene--small { min-height: 200px; }
+
+.scene-bg--market { background: linear-gradient(160deg, #FCE7B0, #F2A65A); }
+.scene-bg--home { background: linear-gradient(160deg, #D8E8FF, #8E7BEF); }
+.scene-bg--park { background: linear-gradient(160deg, #DDF3D8, #6FCF97); }
+.scene-bg--classroom { background: linear-gradient(160deg, #E4DEFB, #6E9BE8); }
+.scene-bg--garden { background: linear-gradient(160deg, #F3E8FF, #B58AE8); }
+
+.story-scene__backdrop-emoji {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  font-size: 3.4rem;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.story-scene__cast {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+  z-index: 1;
+}
+.story-scene--large .story-scene__character,
+.story-scene--large .story-scene__object { font-size: 2.6rem; }
+.story-scene--small .story-scene__character,
+.story-scene--small .story-scene__object { font-size: 1.8rem; }
+
+/* Answer spots placed at the 4 corners of the scene frame */
+.story-scene__answers { position: absolute; inset: 0; }
+.answer-spot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 3px solid var(--color-primary);
+  border-radius: 16px;
+  padding: 8px 14px;
+  font-family: var(--font-main);
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: var(--color-text);
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(110, 88, 216, 0.25);
+  transition: transform 0.12s ease;
+}
+.answer-spot:hover:not(:disabled) { transform: translateY(-2px) scale(1.03); }
+.answer-spot:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+.answer-spot:disabled { cursor: not-allowed; }
+.answer-spot__marker { font-size: 1.4rem; }
+.answer-spot--top-left { top: 14px; left: 14px; }
+.answer-spot--top-right { top: 14px; right: 14px; }
+.answer-spot--bottom-left { bottom: 14px; left: 14px; }
+.answer-spot--bottom-right { bottom: 14px; right: 14px; }
+.answer-spot--selected { border-color: var(--color-primary-dark); background: #EDE9FF; }
+.answer-spot--correct { border-color: #2E9E5B; background: #DFF6E8; }
+.answer-spot--incorrect { border-color: #D64545; background: #FDE4E1; opacity: 0.85; }
+
+@media (max-width: 480px) {
+  .answer-spot { padding: 6px 10px; font-size: 1rem; }
+  .answer-spot__marker { font-size: 1.1rem; }
+  .story-scene { min-height: 320px; padding-top: 60px; padding-bottom: 60px; }
+}
+
+/* Storybuilding beats (pre-assessment narrative) */
+.story-beats { display: flex; flex-direction: column; gap: 12px; margin: 14px 0; }
+.story-beat {
+  background: #F7F5FF; border-radius: 14px; padding: 14px 18px; font-size: 1.05rem;
+  line-height: 1.6; opacity: 0; transform: translateY(6px);
+  animation: beat-in 0.4s ease forwards;
+}
+@keyframes beat-in { to { opacity: 1; transform: translateY(0); } }
+
+/* Parent teaching guide */
+.parent-guide {
+  background: #FFF8E6;
+  border: 2px dashed #E8C468;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-top: 18px;
+  text-align: left;
+}
+.parent-guide__title { font-weight: 800; color: #8A6A11; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.parent-guide__text { color: #6B4E10; line-height: 1.6; margin: 0; }
+
+/* Parent live session view */
+.live-session-status { display: flex; align-items: center; gap: 10px; justify-content: center; margin-bottom: 12px; }
+
 .a11y-toggles { display: flex; gap: 10px; margin-top: 20px; justify-content: center; flex-wrap: wrap; }
 .a11y-toggle {
   background: #F1EDFF; border: 2px solid #E4DEFB; border-radius: 999px; padding: 8px 16px; font-weight: 700;

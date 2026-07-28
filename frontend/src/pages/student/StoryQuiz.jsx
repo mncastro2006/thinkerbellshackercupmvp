@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
-import StoryVisual from "../../components/StoryVisual";
+import StoryScene from "../../components/StoryScene";
+import StoryBeats from "../../components/StoryBeats";
 import AnswerBlock from "../../components/AnswerBlock";
 import ProgressBar from "../../components/ProgressBar";
 import AccessibilityToggles from "../../components/AccessibilityToggles";
 
+// INTRO = pre-assessment "storybuilding" beats shown before any questions
+// (PRD roadmap item), QUESTION/FEEDBACK = the scene with answers integrated
+// into it, SUBMITTING = saving the story's answers to the backend.
 const STAGE = { INTRO: "intro", QUESTION: "question", FEEDBACK: "feedback", SUBMITTING: "submitting" };
 
 export default function StoryQuiz() {
@@ -122,37 +126,51 @@ export default function StoryQuiz() {
         {stage === STAGE.INTRO && (
           <div className="center-col">
             <h2>{story.title}</h2>
-            <StoryVisual assets={story.visualAssets} />
-            <p className="story-text">{story.content}</p>
+            <StoryScene
+              background={story.scene?.background}
+              characters={story.scene?.characters}
+              objects={story.visualAssets}
+            />
+            <StoryBeats beats={story.beats?.length ? story.beats : [story.content]} onDone={handleStartStory} onSpeak={speak} />
             <AccessibilityToggles
               dyslexiaFont={dyslexiaFont}
               onToggleFont={() => setDyslexiaFont((v) => !v)}
-              onSpeak={() => speak(story.content)}
+              onSpeak={() => speak((story.beats?.length ? story.beats.join(" ") : story.content))}
               speaking={speaking}
             />
-            <button className="btn" style={{ marginTop: 20 }} onClick={handleStartStory}>
-              Start
-            </button>
           </div>
         )}
 
         {(stage === STAGE.QUESTION || stage === STAGE.FEEDBACK) && question && (
           <div>
-            <StoryVisual assets={question.visualAssets} size="small" />
             <p className="question-text">{question.text}</p>
 
-            <div className="answer-grid">
-              {question.choices.map((choice, i) => (
-                <AnswerBlock
-                  key={choice}
-                  label={choice}
-                  index={i}
-                  selected={selected === choice}
-                  disabled={stage === STAGE.FEEDBACK}
-                  onClick={() => handleAnswer(choice)}
-                />
-              ))}
-            </div>
+            <StoryScene
+              background={story.scene?.background}
+              characters={story.scene?.characters}
+              objects={question.visualAssets}
+              size="small"
+              answerScene={question.answerScene}
+              onAnswer={handleAnswer}
+              selectedLabel={selected}
+              disabled={stage === STAGE.FEEDBACK}
+            />
+
+            {/* Fallback for stories generated before answerScene existed */}
+            {(!question.answerScene || question.answerScene.length === 0) && (
+              <div className="answer-grid">
+                {question.choices.map((choice, i) => (
+                  <AnswerBlock
+                    key={choice}
+                    label={choice}
+                    index={i}
+                    selected={selected === choice}
+                    disabled={stage === STAGE.FEEDBACK}
+                    onClick={() => handleAnswer(choice)}
+                  />
+                ))}
+              </div>
+            )}
 
             <AccessibilityToggles
               dyslexiaFont={dyslexiaFont}

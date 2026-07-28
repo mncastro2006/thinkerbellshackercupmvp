@@ -25,6 +25,9 @@ const SKILL_LABELS = {
   "multiplication-2digit": "multiplication of 2-digit numbers",
   "division-1digit": "division with single-digit numbers",
   "division-2digit": "division with 2-digit numbers",
+  "rounding-nearest-wholenumber": "rounding decimals to the nearest whole number",
+  "rounding-nearest-ten": "rounding numbers to the nearest ten",
+  "rounding-nearest-hundred": "rounding numbers to the nearest hundred",
 };
 
 function skillLabel(tag) {
@@ -76,6 +79,7 @@ function buildReport(answerRecords, studentName = "The learner") {
         subtraction: "Use a number line or take-away visuals (e.g. removing items from a basket) to reinforce the concept before symbolic subtraction.",
         multiplication: "Introduce repeated addition and equal groups (e.g. bags of the same number of fruits) before formal multiplication facts.",
         division: "Practice equal sharing with real objects (splitting snacks evenly among friends) to build intuition before formal division.",
+        rounding: "Use a ruler or number line to show the two nearest 'friendly' numbers and let your child point to which one the value is physically closer to, before relying on the digit rule alone.",
       };
       const op = s.tag.split("-")[0];
       return `For ${s.label}: ${tips[op] || "Provide extra guided practice with visual, hands-on examples."}`;

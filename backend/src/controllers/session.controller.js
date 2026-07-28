@@ -58,11 +58,12 @@ const joinSession = asyncHandler(async (req, res) => {
   if (studentName) session.studentName = studentName;
   await session.save();
 
-  // Strip correct answers before sending to the student device
+  // Strip correct answers AND the parent-only teaching guide before sending
+  // to the student device - the guide is for the parent's screen only.
   const module_ = session.module.toJSON();
   module_.stories = module_.stories
     .sort((a, b) => a.orderIndex - b.orderIndex)
-    .map((s) => ({
+    .map(({ parentGuide, ...s }) => ({
       ...s,
       questions: s.questions
         .sort((a, b) => a.orderIndex - b.orderIndex)
@@ -85,6 +86,58 @@ const getSession = asyncHandler(async (req, res) => {
   res.json({ session });
 });
 
+// GET /api/sessions/:id/live  (parent - the live-session facilitator view)
+// Returns the full module content (stories with beats/scene/parentGuide and
+// their questions with correct answers) plus the session's attempts, so the
+// parent's screen can mirror exactly which story/question the child is on
+// and show the teaching guide for it. This is intentionally separate from
+// the student-facing payload in joinSession, which strips correctAnswer and
+// parentGuide.
+const getLiveSession = asyncHandler(async (req, res) => {
+  const session = await Session.findOne({
+    where: { id: req.params.id, parentId: req.user.id },
+    include: [
+      {
+        model: Module,
+        as: "module",
+        include: [{ model: Story, as: "stories", include: [{ model: Question, as: "questions" }] }],
+      },
+      { model: Attempt, as: "attempts" },
+    ],
+  });
+  if (!session) return res.status(404).json({ message: "Session not found" });
+
+  const module_ = session.module.toJSON();
+  module_.stories = module_.stories
+    .sort((a, b) => a.orderIndex - b.orderIndex)
+    .map((s) => ({
+      ...s,
+      questions: (s.questions || []).sort((a, b) => a.orderIndex - b.orderIndex),
+    }));
+
+  const completedStoryIds = new Set(session.attempts.map((a) => a.storyId));
+  // The story the child is currently on (or has just moved past) - the first
+  // one without a completed attempt, defaulting to the last story if all done.
+  const currentStoryIndex = Math.min(
+    module_.stories.findIndex((s) => !completedStoryIds.has(s.id)) === -1
+      ? module_.stories.length - 1
+      : module_.stories.findIndex((s) => !completedStoryIds.has(s.id)),
+    Math.max(module_.stories.length - 1, 0)
+  );
+
+  res.json({
+    session: {
+      id: session.id,
+      code: session.code,
+      status: session.status,
+      studentName: session.studentName,
+      attempts: session.attempts,
+    },
+    module: module_,
+    currentStoryIndex,
+  });
+});
+
 const listSessions = asyncHandler(async (req, res) => {
   const sessions = await Session.findAll({
     where: { parentId: req.user.id },
@@ -94,4 +147,4 @@ const listSessions = asyncHandler(async (req, res) => {
   res.json({ sessions });
 });
 
-module.exports = { createSession, joinSession, getSession, listSessions };
+module.exports = { createSession, joinSession, getSession, getLiveSession, listSessions };

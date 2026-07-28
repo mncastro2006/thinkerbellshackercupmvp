@@ -32,6 +32,9 @@ const uploadModule = asyncHandler(async (req, res) => {
             content: s.content,
             theme: s.theme,
             visualAssets: s.visualAssets || [],
+            beats: s.beats || [],
+            scene: s.scene || {},
+            parentGuide: s.parentGuide || "",
           },
           { transaction: t }
         );
@@ -46,6 +49,7 @@ const uploadModule = asyncHandler(async (req, res) => {
               correctAnswer: String(q.correctAnswer),
               skillTag: q.skillTag,
               visualAssets: q.visualAssets || [],
+              answerScene: q.answerScene || [],
             },
             { transaction: t }
           );
@@ -73,7 +77,11 @@ const uploadModule = asyncHandler(async (req, res) => {
 });
 
 const getModule = asyncHandler(async (req, res) => {
-  const module_ = await Module.findByPk(req.params.id, {
+  // Scoped to the requesting parent - this endpoint returns full story/question
+  // content including the parent-only teaching guide, so it must never leak
+  // another parent's module.
+  const module_ = await Module.findOne({
+    where: { id: req.params.id, parentId: req.user.id },
     include: [{ model: Story, as: "stories", include: [{ model: Question, as: "questions" }] }],
   });
   if (!module_) return res.status(404).json({ message: "Module not found" });
