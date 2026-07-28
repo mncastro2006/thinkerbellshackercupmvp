@@ -1,5 +1,5 @@
 const SHAPES = ["▲", "◆", "●", "■"];
-const COLORS = ["#F4795B", "#4C9F70", "#4E8FE0", "#F2C230"];
+const COLORS = ["#F4795B", "#6baa75", "#6698cc", "#F4d77a"];
 
 export default function AnswerBlock({ label, index, onClick, selected, disabled, correctness }) {
   const shape = SHAPES[index % SHAPES.length];
