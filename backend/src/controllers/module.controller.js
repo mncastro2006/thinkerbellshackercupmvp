@@ -1,6 +1,64 @@
 const { Module, Story, Question, sequelize } = require("../models");
+const { resolvePack } = require("../content/modules.config");
 const { loadPredeterminedModule, listSupportedFilenames } = require("../services/content.service");
+const { extractTextFromPdf } = require("../services/pdf.service");
+const { generateStoriesWithAI, generateStoriesFallback } = require("../services/ai.service");
 const asyncHandler = require("../utils/asyncHandler");
+
+/**
+ * Turns an uploaded PDF into { packKey, topic, title, stories, feedback }.
+ * Generation order:
+ *   1. Real AI generation from the extracted PDF text (tries every
+ *      configured provider - see services/providers - before giving up).
+ *   2. If AI is unavailable/fails AND the filename matches one of the
+ *      demo packs (MATH3_Mod1/Mod2), fall back to that hand-authored pack
+ *      so the guided demo experience still works without any AI key.
+ *   3. Otherwise, fall back to the fully offline template generator so an
+ *      arbitrary PDF upload never hard-fails even without AI configured.
+ */
+async function buildModulePack(file, title) {
+  const extractedText = await extractTextFromPdf(file.path);
+
+  try {
+    const aiResult = await generateStoriesWithAI(extractedText);
+    return {
+      packKey: null,
+      topic: aiResult.topic,
+      title: title || aiResult.topic,
+      stories: aiResult.stories,
+      feedback: null,
+      extractedText,
+      source: "ai",
+    };
+  } catch (err) {
+    console.warn("[module.controller] AI generation unavailable, checking fallbacks:", err.message);
+  }
+
+  const matchedPack = resolvePack(file.originalname, title);
+  if (matchedPack) {
+    const pack = await loadPredeterminedModule(file.originalname, title);
+    return {
+      packKey: pack.packKey,
+      topic: pack.topic,
+      title: pack.title,
+      stories: pack.stories,
+      feedback: pack.feedback,
+      extractedText,
+      source: "hardcoded-pack",
+    };
+  }
+
+  const offline = generateStoriesFallback(extractedText);
+  return {
+    packKey: null,
+    topic: offline.topic,
+    title: title || offline.topic,
+    stories: offline.stories,
+    feedback: null,
+    extractedText,
+    source: "offline-fallback",
+  };
+}
 
 // POST /api/modules/upload  (multipart/form-data, field name: "file")
 const uploadModule = asyncHandler(async (req, res) => {
@@ -8,15 +66,12 @@ const uploadModule = asyncHandler(async (req, res) => {
 
   let pack;
   try {
-    pack = await loadPredeterminedModule(req.file.originalname, req.body.title || "");
+    pack = await buildModulePack(req.file, req.body.title || "");
   } catch (err) {
-    if (err.statusCode === 400) {
-      return res.status(400).json({
-        message: err.message,
-        supported: listSupportedFilenames(),
-      });
-    }
-    throw err;
+    return res.status(400).json({
+      message: "Could not process this PDF. Please try a different file.",
+      supported: listSupportedFilenames(),
+    });
   }
 
   const module_ = await Module.create({
@@ -25,7 +80,7 @@ const uploadModule = asyncHandler(async (req, res) => {
     parentId: req.user.id,
     packKey: pack.packKey,
     topic: pack.topic,
-    extractedText: `[prototype] Loaded predetermined pack ${pack.packKey}`,
+    extractedText: pack.extractedText,
     status: "processing",
   });
 

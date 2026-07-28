@@ -5,9 +5,13 @@
  * 3 short, easy-to-visualize stories, each with 5 multiple-choice
  * questions, suitable for a neurodivergent learner.
  *
- * If OPENAI_API_KEY is configured, a real LLM call is made. Otherwise this
- * falls back to a deterministic, template-based generator so the whole
- * product still works out of the box with zero external dependencies.
+ * If at least one AI provider is configured (OPENAI_API_KEY and/or
+ * GEMINI_API_KEY), a real LLM call is made - providers are tried in the
+ * order given by AI_PROVIDER_ORDER (default "openai,gemini"), so a rate
+ * limit or outage on one provider automatically falls through to the next.
+ * If every provider is unconfigured or fails, this falls back to a
+ * deterministic, template-based generator so the whole product still works
+ * out of the box with zero external dependencies.
  *
  * Each story also carries:
  *  - beats: a short "storybuilding" sequence read/narrated before any
@@ -22,7 +26,7 @@
  *    buttons underneath it.
  */
 
-const OpenAI = require("openai");
+const { runWithFallback } = require("./providers");
 
 // People are handled separately from objects so we never end up with
 // nonsensical sentences like "Lea bought 5 girls".
@@ -488,10 +492,34 @@ function backfillCompositionFields(parsed) {
   return parsed;
 }
 
-/** LLM-backed generator used when OPENAI_API_KEY is configured. */
-async function generateStoriesWithOpenAI(text) {
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+/** Validates and normalizes a raw JSON story response from any provider. */
+function parseAndValidateStories(raw) {
+  const parsed = JSON.parse(raw);
 
+  if (!parsed.stories || parsed.stories.length !== 3) {
+    throw new Error("AI response did not contain exactly 3 stories");
+  }
+  parsed.stories.forEach((s) => {
+    if (!s.questions || s.questions.length !== 5) {
+      throw new Error("AI response story did not contain exactly 5 questions");
+    }
+    s.questions.forEach((q) => {
+      if (!q.choices || q.choices.length !== 4) {
+        throw new Error("AI response question did not contain exactly 4 choices");
+      }
+    });
+  });
+
+  parsed.stories.forEach((s, i) => {
+    s.orderIndex = i;
+    s.questions.forEach((q, qi) => (q.orderIndex = qi));
+  });
+
+  return backfillCompositionFields(parsed);
+}
+
+/** LLM-backed generator, tried across every configured provider in order. */
+async function generateStoriesWithAI(text) {
   const systemPrompt = `You are an assistant that adapts a math curriculum excerpt into
 learning material for a neurodivergent child, for a PARENT-LED at-home session (the parent
 reads/narrates and teaches; the child answers on a connected device). Produce EXACTLY 3
@@ -557,55 +585,26 @@ Respond with ONLY valid JSON (no markdown fences) matching this shape:
   const userPrompt = `Source curriculum text (may be long, focus on the core math concept
 and difficulty level being taught):\n\n${text.slice(0, 6000)}`;
 
-  const completion = await client.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.7,
-    response_format: { type: "json_object" },
-  });
-
-  const raw = completion.choices[0].message.content;
-  const parsed = JSON.parse(raw);
-
-  if (!parsed.stories || parsed.stories.length !== 3) {
-    throw new Error("AI response did not contain exactly 3 stories");
-  }
-  parsed.stories.forEach((s) => {
-    if (!s.questions || s.questions.length !== 5) {
-      throw new Error("AI response story did not contain exactly 5 questions");
-    }
-    s.questions.forEach((q) => {
-      if (!q.choices || q.choices.length !== 4) {
-        throw new Error("AI response question did not contain exactly 4 choices");
-      }
-    });
-  });
-
-  parsed.stories.forEach((s, i) => {
-    s.orderIndex = i;
-    s.questions.forEach((q, qi) => (q.orderIndex = qi));
-  });
-
-  return backfillCompositionFields(parsed);
+  const { result, providerName } = await runWithFallback(
+    { systemPrompt, userPrompt, temperature: 0.7 },
+    parseAndValidateStories
+  );
+  console.log(`[ai.service] Stories generated via ${providerName}`);
+  return result;
 }
 
 /**
  * Main entry point: generates { topic, stories: [...] } from extracted PDF text.
- * Falls back to the offline generator on any AI/config error so the request
- * never hard-fails.
+ * Falls back to the offline generator if every configured AI provider is
+ * unconfigured or fails, so the request never hard-fails.
  */
 async function generateStories(text) {
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      return await generateStoriesWithOpenAI(text);
-    } catch (err) {
-      console.warn("[ai.service] OpenAI generation failed, falling back to offline generator:", err.message);
-    }
+  try {
+    return await generateStoriesWithAI(text);
+  } catch (err) {
+    console.warn("[ai.service] AI generation unavailable, falling back to offline generator:", err.message);
   }
   return generateStoriesFallback(text);
 }
 
-module.exports = { generateStories, detectTopic };
+module.exports = { generateStories, generateStoriesWithAI, generateStoriesFallback, detectTopic };

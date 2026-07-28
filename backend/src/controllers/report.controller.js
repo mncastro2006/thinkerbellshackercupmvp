@@ -1,6 +1,47 @@
 const { Session, Module, Attempt, Answer, Question, Report } = require("../models");
-const { buildReport } = require("../services/evaluation.service");
+const { generateReport } = require("../services/evaluation.service");
 const asyncHandler = require("../utils/asyncHandler");
+
+/** Pulls every answer for a session with the question detail needed for
+ * qualitative analysis (given vs correct answer, question text, skillTag). */
+async function loadDetailedAnswerRecords(sessionId) {
+  const attempts = await Attempt.findAll({
+    where: { sessionId },
+    include: [{ model: Answer, as: "answers", include: [{ model: Question, as: "question" }] }],
+  });
+
+  return attempts.flatMap((att) =>
+    att.answers.map((ans) => ({
+      isCorrect: ans.isCorrect,
+      givenAnswer: ans.givenAnswer,
+      correctAnswer: ans.question?.correctAnswer ?? null,
+      questionText: ans.question?.text ?? null,
+      skillTag: ans.question?.skillTag || "general",
+    }))
+  );
+}
+
+async function createReportForSession(session) {
+  const answerRecords = await loadDetailedAnswerRecords(session.id);
+
+  const built = await generateReport(answerRecords, session.studentName || "The learner", {
+    packKey: session.module?.packKey || null,
+    topic: session.module?.topic || null,
+  });
+
+  return Report.create({
+    sessionId: session.id,
+    overallScore: built.overallScore,
+    performanceLevel: built.performanceLevel,
+    competencyBreakdown: built.competencyBreakdown,
+    strengths: built.strengths,
+    keyInsight: built.keyInsight,
+    nextMilestone: built.nextMilestone,
+    multiSensoryActivities: built.multiSensoryActivities,
+    summary: built.summary,
+    generatedBy: built.generatedBy,
+  });
+}
 
 // GET /api/reports/session/:sessionId  (parent, authenticated)
 // Generates the report on first call, then returns the cached version.
@@ -19,35 +60,9 @@ const getSessionReport = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "The learner has not finished all 3 stories yet" });
   }
 
-  const attempts = await Attempt.findAll({
-    where: { sessionId: session.id },
-    include: [{ model: Answer, as: "answers", include: [{ model: Question, as: "question" }] }],
-  });
+  const report = await createReportForSession(session);
 
-  const answerRecords = attempts.flatMap((att) =>
-    att.answers.map((ans) => ({
-      isCorrect: ans.isCorrect,
-      skillTag: ans.question?.skillTag || "general",
-    }))
-  );
-
-  const built = buildReport(
-    answerRecords,
-    session.studentName || "The learner",
-    session.module?.packKey || null
-  );
-
-  const report = await Report.create({
-    sessionId: session.id,
-    overallScore: built.overallScore,
-    performanceLevel: built.performanceLevel,
-    strengths: built.strengths,
-    weaknesses: built.weaknesses,
-    recommendations: built.recommendations,
-    summary: built.summary,
-  });
-
-  res.json({ report, session, skillStats: built.skillStats });
+  res.json({ report, session });
 });
 
 // GET /api/reports/session/:sessionId/summary  (public - the student device that just
@@ -64,34 +79,7 @@ const getPublicSummary = asyncHandler(async (req, res) => {
     if (session.status !== "completed") {
       return res.status(400).json({ message: "The session is not finished yet" });
     }
-
-    const attempts = await Attempt.findAll({
-      where: { sessionId: session.id },
-      include: [{ model: Answer, as: "answers", include: [{ model: Question, as: "question" }] }],
-    });
-
-    const answerRecords = attempts.flatMap((att) =>
-      att.answers.map((ans) => ({
-        isCorrect: ans.isCorrect,
-        skillTag: ans.question?.skillTag || "general",
-      }))
-    );
-
-    const built = buildReport(
-      answerRecords,
-      session.studentName || "You",
-      session.module?.packKey || null
-    );
-
-    report = await Report.create({
-      sessionId: session.id,
-      overallScore: built.overallScore,
-      performanceLevel: built.performanceLevel,
-      strengths: built.strengths,
-      weaknesses: built.weaknesses,
-      recommendations: built.recommendations,
-      summary: built.summary,
-    });
+    report = await createReportForSession(session);
   }
 
   const totalQuestions = (await Attempt.findAll({ where: { sessionId: session.id } })).reduce(

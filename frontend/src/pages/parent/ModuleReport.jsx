@@ -10,6 +10,13 @@ const LEVEL_LABELS = {
   needs_improvement: "Needs improvement",
 };
 
+const MODALITY_ICON = {
+  Visual: "👀",
+  Kinesthetic: "🤸",
+  Tactile: "✋",
+  Auditory: "👂",
+};
+
 export default function ModuleReport() {
   const { sessionId } = useParams();
   const [report, setReport] = useState(null);
@@ -46,26 +53,55 @@ export default function ModuleReport() {
 
         <p style={{ textAlign: "center" }}>{report.summary}</p>
 
+        {report.competencyBreakdown?.length > 0 && (
+          <div className="report-section">
+            <h3>📊 Module Breakdown</h3>
+            <ul className="report-list">
+              {report.competencyBreakdown.map((c) => (
+                <li key={c.tag}>
+                  <strong>{c.label}</strong>: {c.accuracy}% accuracy ({c.correct}/{c.total}) — {c.masteryLevel}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         <div className="report-section">
-          <h3>💪 Strengths</h3>
+          <h3>💪 Wins and Strengths</h3>
           <ul className="report-list">
             {report.strengths.map((s, i) => <li key={i}>{s}</li>)}
           </ul>
         </div>
 
-        <div className="report-section">
-          <h3>🎯 Areas that need improvement</h3>
-          <ul className="report-list">
-            {report.weaknesses.map((w, i) => <li key={i}>{w}</li>)}
-          </ul>
-        </div>
+        {report.keyInsight && (
+          <div className="report-section">
+            <h3>🔍 Key Insight and Observed Strategy</h3>
+            <ul className="report-list">
+              {report.keyInsight.currentStrategy && <li>{report.keyInsight.currentStrategy}</li>}
+              {report.keyInsight.errorPattern && <li>{report.keyInsight.errorPattern}</li>}
+            </ul>
+          </div>
+        )}
 
-        <div className="report-section">
-          <h3>📚 Recommended next steps</h3>
-          <ul className="report-list">
-            {report.recommendations.map((r, i) => <li key={i}>{r}</li>)}
-          </ul>
-        </div>
+        {report.nextMilestone && (
+          <div className="report-section">
+            <h3>🎯 Next Growth Milestone</h3>
+            <p>{report.nextMilestone}</p>
+          </div>
+        )}
+
+        {report.multiSensoryActivities?.length > 0 && (
+          <div className="report-section">
+            <h3>🖐️ Multi-Sensory Home Practice Activities</h3>
+            <ul className="report-list">
+              {report.multiSensoryActivities.map((act, i) => (
+                <li key={i}>
+                  <strong>{MODALITY_ICON[act.modality] || ""} {act.modality} — {act.title}:</strong> {act.description}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <Link to="/parent" className="btn btn--block" style={{ marginTop: 24 }}>Back to dashboard</Link>
       </div>
