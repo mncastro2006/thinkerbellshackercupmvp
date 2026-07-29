@@ -106,7 +106,7 @@ export default function GeneratedCode() {
   if (module_?.stories) {
     module_.stories.forEach((s, idx) => {
       const qCount = s.questions?.length || 0;
-      const stepsInThisStory = 1 + qCount; // 1 for reading the story + N questions
+      const stepsInThisStory = 1 + qCount;
       totalSteps += stepsInThisStory;
       
       if (idx < storyIndex) {
@@ -481,7 +481,7 @@ export default function GeneratedCode() {
         <>
           <div className="waiting-tag">This is your code</div>
           <div className="code-main-card waiting-status-card">
-            <h1 style={{color: "#4c37a9"}}>Enter code on device</h1>
+            <h1 style={{ color: "#4c37a9", fontWeight: 900 }}>Enter code on device</h1>
             <p className="helper-text" style={{color: "#6698cc"}}>
               Enter this code on your child&apos;s device to connect it to{" "}
               <strong style={{color: "#4c37a9"}}>{module_?.title}</strong>.
