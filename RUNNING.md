@@ -1,10 +1,10 @@
-# Running ThinkerBells with Docker Compose
+# Running Vizma with Docker Compose
 
 This repo is a monorepo containing everything needed to run the app locally
 with a single command — no local Node.js or MySQL installation required.
 
 ```
-thinkerbells/
+vizma/
 ├── docker-compose.yml   # orchestrates mysql + backend + frontend + adminer
 ├── .env                 # default local dev config (already included)
 ├── backend/              # Express REST API (Node.js + Sequelize + MySQL)
@@ -20,30 +20,40 @@ thinkerbells/
 ## 2. Clone and configure
 
 ```bash
-git clone <your-fork-url> thinkerbells
-cd thinkerbells
+git clone <your-fork-url> vizma
+cd vizma
 ```
 
 Default `.env` files are already committed for local development
-(`./.env`, `./backend/.env`) so the app works immediately. If you want to
-customize ports, DB credentials, or enable real AI story generation, copy
-the `.env.example` files and edit them:
+(`./.env`, `./backend/.env`) so the app works immediately with the offline
+fallback generator. To get **real AI-generated stories and feedback reports**,
+copy the `.env.example` files and add your API key(s):
 
 ```bash
 cp .env.example .env
 cp backend/.env.example backend/.env
 ```
 
-### Prototype modules (required filenames)
+Then set `OPENAI_API_KEY` and/or `GEMINI_API_KEY` in `backend/.env` (see
+`AI_PROVIDER_ORDER` to control which provider is tried first). Without a key
+configured, or if every configured provider fails, requests automatically
+fall back to a deterministic offline generator so the app still works end
+to end with zero external dependencies.
 
-Upload one of the sample PDFs in `backend/sample-modules/`:
+### Sample lesson PDFs
+
+Upload one of the sample PDFs in `backend/sample-modules/` (or any lesson
+PDF of your own):
 
 - `MATH3_Mod1.pdf` — addition of 1- and 2-digit numbers
 - `MATH3_Mod2.pdf` — division of 1- and 2-digit numbers
 
-Stories, questions, and feedback are predetermined (edit
-`backend/src/content/modules.config.js`). The upload UI still shows a short
-“Generating stories with AI…” delay for demo realism.
+The backend extracts the PDF text and sends it to the configured generative
+AI provider to produce 3 stories with 5 questions each. If AI generation is
+unavailable and the filename matches one of the two sample PDFs above, the
+app falls back to a hand-authored demo pack in
+`backend/src/content/modules.config.js` so the guided demo still works
+without any AI key.
 
 ## 3. Run everything
 
@@ -92,8 +102,9 @@ Adminer login: System = `MySQL`, Server = `mysql`, Username/Password/Database
    **Student**, and enter the code.
 5. Play through the 3 stories. Each finished story auto-saves to the backend.
 6. After the last story, the student sees an evaluation screen, and the
-   parent's dashboard/profile shows a full feedback report (strengths,
-   weaknesses, and recommended next steps).
+   parent's dashboard/profile shows a full AI-curated feedback report
+   (strengths, weaknesses, and recommended next steps) based on the child's
+   quiz results.
 
 ## 6. Stopping / resetting
 
