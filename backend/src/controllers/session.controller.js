@@ -11,6 +11,19 @@ const {
 const CODE_LENGTH = Number(process.env.SESSION_CODE_LENGTH || 6);
 const TTL_MINUTES = Number(process.env.SESSION_CODE_TTL_MINUTES || 60);
 
+// Fisher-Yates shuffle. Used so the correct answer isn't always rendered in
+// the same position/color (predetermined content packs hardcode choices in
+// a fixed order, which otherwise makes the correct answer land on the same
+// answer button every time).
+function shuffle(arr) {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 // POST /api/sessions   { moduleId }  (parent, authenticated)
 const createSession = asyncHandler(async (req, res) => {
   const { moduleId } = req.body;
@@ -76,7 +89,18 @@ const joinSession = asyncHandler(async (req, res) => {
       ...s,
       questions: s.questions
         .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map(({ correctAnswer, ...q }) => q),
+        .map(({ correctAnswer, choices, answerScene, ...q }) => {
+          // Shuffle choices (and any matching answerScene marker/position
+          // entries) so the correct answer doesn't always render in the
+          // same slot/color.
+          const order = shuffle(choices.map((_, i) => i));
+          const shuffledChoices = order.map((i) => choices[i]);
+          const shuffledAnswerScene =
+            answerScene && answerScene.length === choices.length
+              ? order.map((i) => answerScene[i])
+              : answerScene;
+          return { ...q, choices: shuffledChoices, answerScene: shuffledAnswerScene };
+        }),
     }));
 
   res.json({
