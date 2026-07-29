@@ -51,7 +51,6 @@ export default function StoryQuiz() {
         if (res.data.status === "completed" || res.data.cursorStage === "done") {
           navigate("/student/evaluation");
         }
-        // Clear local selection when parent moves to a new question/story
         setSelected((prev) => {
           if (res.data.lastAnswerFeedback?.questionId) return prev;
           return null;
@@ -64,7 +63,7 @@ export default function StoryQuiz() {
           setSelected(res.data.lastAnswerFeedback.givenAnswer);
         }
       } catch {
-        // ignore transient poll errors
+        // ignore polling errors
       }
     }
 
@@ -121,33 +120,153 @@ export default function StoryQuiz() {
       : story.visualAssets || [];
 
   return (
-    <div className="page page--narrow">
+    <div className="sq-wrapper">
+      {/* Embedded Component Styles */}
+      <style>{`
+       @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;800&family=Nunito:wght@700;900&display=swap');
+
+        .sq-wrapper {
+          width: 100%;
+          max-width: 1100px;
+          margin: 0 auto;
+          margin-top: 60px;
+          padding: 24px;
+          box-sizing: border-box;
+          font-family: 'Nunito', 'Poppins', sans-serif;
+        }
+
+        .sq-progress-container {
+          margin-bottom: 16px;
+        }
+
+        .sq-card {
+          background: #ffffff;
+          border-radius: 24px;
+          padding: 32px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+          display: flex;
+          flex-direction: column;
+          gap: 28px;
+          margin-top: 20px;
+        }
+
+        /* TOP SECTION: Split Scene (Left) & Question Text (Right) */
+        .sq-top-section {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+          align-items: center;
+        }
+
+        .sq-scene-container {
+          width: 100%;
+          height: 340px;
+          min-height: 340px;
+          max-height: 340px;
+          border-radius: 16px;
+          overflow: hidden;
+          position: relative;
+          box-sizing: border-box;
+        }
+        
+        /* Force inner StoryScene to fill the fixed box completely */
+        .sq-scene-container > * {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 100% !important;
+          max-height: 100% !important;
+          box-sizing: border-box;
+        }
+
+        .sq-text-box {
+          background: #f1f5f9;
+          border-radius: 16px;
+          padding: 24px;
+          min-height: 200px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .sq-question-text {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #1e293b;
+          line-height: 1.5;
+          margin: 0;
+          text-align: left;
+        }
+
+        /* BOTTOM SECTION: 4 Answer Choices Side-by-Side */
+        .sq-bottom-section {
+          width: 100%;
+        }
+
+        .sq-answer-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+          width: 100%;
+        }
+
+        .sq-helper-text {
+          text-align: center;
+          font-size: 1.1rem;
+          color: #64748b;
+          margin-top: 16px;
+        }
+
+        .sq-error {
+          color: #ef4444;
+          font-weight: 600;
+          text-align: center;
+        }
+
+        @media (max-width: 768px) {
+          .sq-top-section {
+            grid-template-columns: 1fr;
+          }
+          .sq-answer-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+      `}</style>
+
       <ProgressBar
         value={overallProgress.value}
         max={overallProgress.max}
         label={`Story ${storyIndex + 1} of ${stories.length}`}
       />
 
-      {error && <p className="error-text">{error}</p>}
+      {error && <p className="sq-error">{error}</p>}
 
-      <div className="quiz-screen student-follower">
-        <StoryScene
-          background={story.scene?.background}
-          characters={story.scene?.characters}
-          objects={objects}
-          size={stage === "question" ? "small" : "large"}
-        />
+      <div className="sq-card">
+        {/* Top Half: Visual Scene (Left) + Text/Question (Right) */}
+        <div className="sq-top-section">
+          <div className="sq-scene-container">
+            <StoryScene
+              background={story.scene?.background}
+              characters={story.scene?.characters}
+              objects={objects}
+              size="large"
+            />
+          </div>
 
-        {stage === "story" && (
-          <p className="helper-text" style={{ textAlign: "center" }}>
-            Look at the pictures. Your parent will start the questions when you are ready.
-          </p>
-        )}
+          <div className="sq-text-box">
+            {stage === "story" ? (
+              <p className="sq-question-text">
+                {story.text || "Look at the pictures. Your parent will start the questions when you are ready."}
+              </p>
+            ) : (
+              <p className="sq-question-text">{question?.text}</p>
+            )}
+          </div>
+        </div>
 
+        {/* Bottom Half: Side-by-Side 4 Answer Cards */}
         {stage === "question" && question && (
-          <>
-            <p className="question-text">{question.text}</p>
-            <div className="answer-grid">
+          <div className="sq-bottom-section">
+            <div className="sq-answer-grid">
               {question.choices.map((choice, i) => {
                 let correctness;
                 if (answerResult && selected === choice) {
@@ -166,12 +285,19 @@ export default function StoryQuiz() {
                 );
               })}
             </div>
+
             {selected && (
-              <p className="helper-text" style={{ textAlign: "center", marginTop: 12 }}>
+              <p className="sq-helper-text">
                 Nice! Wait for your parent to continue.
               </p>
             )}
-          </>
+          </div>
+        )}
+
+        {stage === "story" && (
+          <p className="sq-helper-text">
+            Look at the pictures. Your parent will start the questions when you are ready.
+          </p>
         )}
       </div>
     </div>
