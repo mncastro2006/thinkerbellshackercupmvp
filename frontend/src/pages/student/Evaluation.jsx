@@ -2,14 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/client";
 
-const LEVEL_LABELS = {
-  excellent: "Excellent",
-  proficient: "Proficient",
-  average: "Average",
-  developing: "Developing",
-  needs_improvement: "Needs improvement",
-};
-
 export default function Evaluation() {
   const navigate = useNavigate();
   const [summary, setSummary] = useState(null);
@@ -28,32 +20,88 @@ export default function Evaluation() {
       .catch((err) => setError(err.response?.data?.message || "Could not load your results"));
   }, [navigate]);
 
-  function handleDone() {
-    sessionStorage.removeItem("tb_session");
-    sessionStorage.removeItem("tb_module");
-    navigate("/");
-  }
-
   if (error) return <div className="page center-col"><p className="error-text">{error}</p></div>;
   if (!summary) return <div className="page center-col">Calculating your results...</div>;
 
+  // Calculate percentage score
+  const percentage = summary.totalQuestions
+    ? Math.round((summary.score / summary.totalQuestions) * 100)
+    : 0;
+
   return (
-    <div className="page page--narrow">
-      <div className="card eval-hero">
-        <h1>{summary.moduleTitle}</h1>
-        <div className="eval-score">{summary.score}/{summary.totalQuestions}</div>
-        <span className={`eval-level eval-level--${summary.performanceLevel}`}>
-          {LEVEL_LABELS[summary.performanceLevel]}
-        </span>
+    <div className="eval-wrapper">
+      <style>{`
+        .eval-wrapper {
+          width: 100%;
+          max-width: 600px;
+          margin: 60px auto 40px auto;
+          padding: 24px;
+          box-sizing: border-box;
+          font-family: system-ui, -apple-system, sans-serif;
+        }
 
-        <div className="report-section" style={{ textAlign: "left" }}>
-          <h3>Description</h3>
-          <p>{summary.summary}</p>
-        </div>
+        .eval-card {
+          background: #ffffff;
+          border-radius: 28px;
+          padding: 40px 32px;
+          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+        }
 
-        <button className="btn btn--block" style={{ marginTop: 20 }} onClick={handleDone}>
-          Back
-        </button>
+        .eval-title {
+          font-size: 2rem;
+          font-weight: 800;
+          color: #4f46e5; /* Distinct deep purple title */
+          margin: 0 0 16px 0;
+        }
+
+        .eval-percentage {
+          font-size: 5rem;
+          font-weight: 900;
+          color: #5b9bd5; /* Bold blue percentage */
+          margin: 0 0 16px 0;
+          line-height: 1;
+        }
+
+        .eval-message {
+          font-size: 1.8rem;
+          font-weight: 800;
+          color: #22c55e; /* Encouraging vibrant green */
+          margin: 0;
+        }
+
+        @media (max-width: 640px) {
+          .eval-wrapper {
+            margin-top: 80px;
+            padding: 16px;
+          }
+          .eval-card {
+            padding: 32px 20px;
+          }
+          .eval-title {
+            font-size: 1.6rem;
+          }
+          .eval-percentage {
+            font-size: 4rem;
+          }
+          .eval-message {
+            font-size: 1.5rem;
+          }
+        }
+      `}</style>
+
+      <div className="eval-card">
+        {/* Module Title */}
+        <h1 className="eval-title">{summary.moduleTitle}</h1>
+
+        {/* Score Percentage */}
+        <div className="eval-percentage">{percentage}%</div>
+
+        {/* Good Job Encouragement Message */}
+        <div className="eval-message">🎉 Good Job!</div>
       </div>
     </div>
   );

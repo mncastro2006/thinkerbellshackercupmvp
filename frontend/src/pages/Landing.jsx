@@ -214,7 +214,7 @@ export default function Landing() {
           </div>
           <div className="feature-item">
             <div className="feature-icon-circle">🔗</div>
-            <p className="feature-text">Simple Kahoot-style connect</p>
+            <p className="feature-text">Neurodiverse learning</p>
           </div>
           <div className="feature-item">
             <div className="feature-icon-circle">💌</div>
