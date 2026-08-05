@@ -10,6 +10,13 @@ const LEVEL_LABELS = {
   needs_improvement: "Needs improvement",
 };
 
+const MODALITY_ICON = {
+  Visual: "👀",
+  Kinesthetic: "🤸",
+  Tactile: "✋",
+  Auditory: "👂",
+};
+
 export default function ModuleReport() {
   const { sessionId } = useParams();
   const [report, setReport] = useState(null);
@@ -276,34 +283,30 @@ export default function ModuleReport() {
             </div>
           </div>
 
-          {/* Column 2: Areas that need improvement */}
+          {/* Column 2: Key insight (current strategy + error pattern) */}
           <div className="report-column">
-            <h3>🎯 Areas for Improvement</h3>
+            <h3>🔍 Key Insight</h3>
             <div className="report-item-list">
-              {report.weaknesses && report.weaknesses.length > 0 ? (
-                report.weaknesses.map((w, i) => (
-                  <div key={i} className="report-item-card">
-                    {w}
-                  </div>
-                ))
-              ) : (
+              {report.keyInsight?.currentStrategy && (
+                <div className="report-item-card">{report.keyInsight.currentStrategy}</div>
+              )}
+              {report.keyInsight?.errorPattern && (
+                <div className="report-item-card">{report.keyInsight.errorPattern}</div>
+              )}
+              {!report.keyInsight && (
                 <p className="helper-text" style={{ fontSize: "14px", margin: 0 }}>
-                  No specific areas noted.
+                  No specific insight noted.
                 </p>
               )}
             </div>
           </div>
 
-          {/* Column 3: Recommended next steps */}
+          {/* Column 3: Next milestone */}
           <div className="report-column">
-            <h3>📚 Recommended Steps</h3>
+            <h3>🎯 Next Growth Milestone</h3>
             <div className="report-item-list">
-              {report.recommendations && report.recommendations.length > 0 ? (
-                report.recommendations.map((r, i) => (
-                  <div key={i} className="report-item-card">
-                    {r}
-                  </div>
-                ))
+              {report.nextMilestone ? (
+                <div className="report-item-card">{report.nextMilestone}</div>
               ) : (
                 <p className="helper-text" style={{ fontSize: "14px", margin: 0 }}>
                   No recommendations noted.
@@ -312,6 +315,35 @@ export default function ModuleReport() {
             </div>
           </div>
         </div>
+
+        {report.competencyBreakdown?.length > 0 && (
+          <div className="report-column" style={{ marginBottom: 30 }}>
+            <h3>📊 Module Breakdown</h3>
+            <div className="report-item-list">
+              {report.competencyBreakdown.map((c) => (
+                <div key={c.tag} className="report-item-card">
+                  <strong>{c.label}</strong>: {c.accuracy}% accuracy ({c.correct}/{c.total}) — {c.masteryLevel}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {report.multiSensoryActivities?.length > 0 && (
+          <div className="report-column" style={{ marginBottom: 30 }}>
+            <h3>🖐️ Multi-Sensory Home Practice Activities</h3>
+            <div className="report-item-list">
+              {report.multiSensoryActivities.map((act, i) => (
+                <div key={i} className="report-item-card">
+                  <strong>
+                    {MODALITY_ICON[act.modality] || ""} {act.modality} — {act.title}:
+                  </strong>{" "}
+                  {act.description}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ACTION BUTTON */}
         <Link to="/parent" className="btn-dashboard">
